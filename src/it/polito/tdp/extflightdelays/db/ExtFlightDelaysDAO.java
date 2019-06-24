@@ -7,9 +7,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 import it.polito.tdp.extflightdelays.model.Airline;
 import it.polito.tdp.extflightdelays.model.Airport;
+import it.polito.tdp.extflightdelays.model.AirportCount;
 import it.polito.tdp.extflightdelays.model.Flight;
 
 public class ExtFlightDelaysDAO {
@@ -37,7 +39,7 @@ public class ExtFlightDelaysDAO {
 		}
 	}
 
-	public List<Airport> loadAllAirports() {
+	public List<Airport> loadAllAirports(Map<Integer,Airport>m) {
 		String sql = "SELECT * FROM airports";
 		List<Airport> result = new ArrayList<Airport>();
 
@@ -51,6 +53,7 @@ public class ExtFlightDelaysDAO {
 						rs.getString("CITY"), rs.getString("STATE"), rs.getString("COUNTRY"), rs.getDouble("LATITUDE"),
 						rs.getDouble("LONGITUDE"), rs.getDouble("TIMEZONE_OFFSET"));
 				result.add(airport);
+				m.put(airport.getId(),airport);
 			}
 
 			conn.close();
@@ -91,4 +94,87 @@ public class ExtFlightDelaysDAO {
 			throw new RuntimeException("Error Connection Database");
 		}
 	}
+	
+	public int numeroVoli(Airport a) {
+		String sql = "SELECT COUNT(ID) FROM flights WHERE ORIGIN_AIRPORT_ID= ? OR DESTINATION_AIRPORT_ID= ?  ";
+		
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, a.getId());
+			st.setInt(2, a.getId());
+			ResultSet rs = st.executeQuery();
+
+			int n=0;
+			if (rs.next()) {
+				n=rs.getInt("COUNT(ID)");
+			}
+
+			conn.close();
+			return n;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
+	public AirportCount loadAllAirportsCount(Airport a) {
+		String sql = "SELECT COUNT(DISTINCT AIRLINE_ID) AS c  FROM flights AS f, airlines AS a WHERE f.ORIGIN_AIRPORT_ID=? OR f.DESTINATION_AIRPORT_ID=? ";
+		AirportCount result=null;
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, a.getId());
+			st.setInt(2, a.getId());
+			ResultSet rs = st.executeQuery();
+
+			if (rs.next()) {
+				
+				result=new AirportCount(a,rs.getInt("c"));
+			}
+
+			conn.close();
+		
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+		return result;
+	
+
+}
+	public int setArchiPeso(Airport a, Airport b) {
+		String sql = "SELECT count(ORIGIN_AIRPORT_ID) FROM flights AS f WHERE (ORIGIN_AIRPORT_ID=? AND DESTINATION_AIRPORT_ID=?) OR (DESTINATION_AIRPORT_ID=? AND ORIGIN_AIRPORT_ID=?) ";
+		List<Airport> result = new ArrayList<Airport>();
+
+		try {
+			Connection conn = ConnectDB.getConnection();
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, a.getId());
+			st.setInt(2, b.getId());
+			st.setInt(3, a.getId());
+			st.setInt(4, b.getId());
+			ResultSet rs = st.executeQuery();
+
+			int peso=0;
+			if (rs.next()) {
+						peso=rs.getInt("COUNT(ORIGIN_AIRPORT_ID)");		
+			}
+
+			conn.close();
+			return peso;
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			System.out.println("Errore connessione al database");
+			throw new RuntimeException("Error Connection Database");
+		}
+	}
+	
 }
